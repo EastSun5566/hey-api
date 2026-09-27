@@ -14,7 +14,8 @@ type SignatureParameter = {
 type SignatureParameters = Record<string, SignatureParameter>;
 
 type Field = {
-  in: Location | 'headers';
+  binary?: boolean;
+  in: Location | 'headers' | 'multipart';
   key: string;
   map?: string;
 };
@@ -129,8 +130,11 @@ export function getSignatureParameters({
         }
         signatureParameters[name] = signatureParameter;
         fields.push({
-          in: location,
+          in: operation.body.type === 'form-data' ? 'multipart' : location,
           key: name,
+          ...(operation.body.type === 'form-data' && property.format === 'binary'
+            ? { binary: true }
+            : {}),
           ...(name !== originalName ? { map: originalName } : {}),
         });
       }

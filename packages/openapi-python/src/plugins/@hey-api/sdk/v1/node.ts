@@ -124,6 +124,9 @@ function implementFn<T extends ReturnType<typeof $.method>>(args: {
       const fieldDict = $.dict();
       fieldDict.entry($.literal('in'), $.literal(field.in));
       fieldDict.entry($.literal('key'), $.literal(field.key));
+      if (field.binary) {
+        fieldDict.entry($.literal('binary'), $.literal(true));
+      }
       if (field.map) {
         fieldDict.entry($.literal('map'), $.literal(field.map));
       }

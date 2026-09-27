@@ -15,11 +15,11 @@ def build_client_params(fields: list[dict[str, Any]], /, **kwargs) -> dict[str, 
     """Build client parameters from flat keyword arguments.
 
     Args:
-        fields: List of field configurations with 'in', 'key', and optional 'map'.
+        fields: List of field configurations with 'in', 'key', optional 'map' and 'binary'.
         **kwargs: Flat parameters passed to the SDK method.
 
     Returns:
-        Dict suitable for httpx client methods: {params: {...}, headers: {...}, json: Any}
+        Dict suitable for httpx client methods, including multipart files when needed.
     """
     result: dict[str, Any] = {}
 
@@ -30,6 +30,7 @@ def build_client_params(fields: list[dict[str, Any]], /, **kwargs) -> dict[str, 
             key_map[key] = {
                 "in": field.get("in"),
                 "map": field.get("map", key),
+                "binary": field.get("binary", False),
             }
 
     for key, value in kwargs.items():
@@ -41,6 +42,12 @@ def build_client_params(fields: list[dict[str, Any]], /, **kwargs) -> dict[str, 
         if field:
             in_slot = field["in"]
             map_key = field["map"]
+            if in_slot == "multipart":
+                result.setdefault("files", {})[map_key] = (
+                    map_key if field["binary"] else None,
+                    value,
+                )
+                continue
             slot = {"body": "json", "query": "params"}.get(in_slot, in_slot)
 
             if in_slot == "body" and map_key == "body":

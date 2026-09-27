@@ -8,6 +8,7 @@ import { getSignatureParameters } from './signature';
 type OperationParameters = {
   bodyRef?: string;
   fields: Array<{
+    binary?: boolean;
     in: string;
     key: string;
     map?: string;
@@ -34,6 +35,10 @@ function schemaToPythonType(
       category: 'schema',
       resourceId: schema.$ref,
     });
+  }
+
+  if (schema.type === 'string' && schema.format === 'binary') {
+    return $('bytes');
   }
 
   if (schema.type === 'array') {
