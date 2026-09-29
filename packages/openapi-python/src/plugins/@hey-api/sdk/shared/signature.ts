@@ -14,6 +14,7 @@ type SignatureParameter = {
 type SignatureParameters = Record<string, SignatureParameter>;
 
 type Field = {
+  array?: boolean;
   binary?: boolean;
   in: Location | 'headers' | 'multipart';
   key: string;
@@ -28,8 +29,10 @@ type Signature = {
 
 export function getSignatureParameters({
   operation,
+  resolveSchema,
 }: {
   operation: IR.OperationObject;
+  resolveSchema: (schema: IR.SchemaObject) => IR.SchemaObject;
 }): Signature | undefined {
   const locations = ['header', 'path', 'query'] as const satisfies ReadonlyArray<Location>;
   const nameToLocations: Record<string, Set<Location>> = {};
@@ -51,18 +54,19 @@ export function getSignatureParameters({
     }
   }
 
-  if (operation.body) {
-    if (
-      !operation.body.schema.logicalOperator &&
-      operation.body.schema.type === 'object' &&
-      operation.body.schema.properties
-    ) {
-      const properties = operation.body.schema.properties;
+  const bodySchema =
+    operation.body?.type === 'form-data'
+      ? resolveSchema(operation.body.schema)
+      : operation.body?.schema;
+
+  if (operation.body && bodySchema) {
+    if (!bodySchema.logicalOperator && bodySchema.type === 'object' && bodySchema.properties) {
+      const properties = bodySchema.properties;
       for (const key in properties) {
         addParameter(key, 'body');
       }
-    } else if (operation.body.schema.$ref) {
-      const name = refToName(operation.body.schema.$ref);
+    } else if (bodySchema.$ref) {
+      const name = refToName(bodySchema.$ref);
       const key = toCase(name, 'snake_case');
       addParameter(key, 'body');
     } else {
@@ -108,20 +112,26 @@ export function getSignatureParameters({
 
   let bodyRef: string | undefined;
 
-  if (operation.body) {
+  if (operation.body && bodySchema) {
     const location = 'body';
-    if (
-      !operation.body.schema.logicalOperator &&
-      operation.body.schema.type === 'object' &&
-      operation.body.schema.properties
-    ) {
-      const properties = operation.body.schema.properties;
+    if (!bodySchema.logicalOperator && bodySchema.type === 'object' && bodySchema.properties) {
+      const properties = bodySchema.properties;
       for (const originalName in properties) {
         const property = properties[originalName]!;
         const name = conflicts.has(originalName) ? `${location}_${originalName}` : originalName;
+        const resolvedProperty = resolveSchema(property);
+        const binaryItem =
+          resolvedProperty.type === 'array' && resolvedProperty.items?.[0]
+            ? resolveSchema(resolvedProperty.items[0])
+            : undefined;
+        const binaryArray = binaryItem?.type === 'string' && binaryItem.format === 'binary';
+        const binary =
+          operation.body.type === 'form-data' &&
+          ((resolvedProperty.type === 'string' && resolvedProperty.format === 'binary') ||
+            binaryArray);
         const signatureParameter: SignatureParameter = {
           in: location,
-          isRequired: operation.body.schema.required?.includes(originalName) ?? false,
+          isRequired: bodySchema.required?.includes(originalName) ?? false,
           name,
           schema: property,
         };
@@ -132,14 +142,13 @@ export function getSignatureParameters({
         fields.push({
           in: operation.body.type === 'form-data' ? 'multipart' : location,
           key: name,
-          ...(operation.body.type === 'form-data' && property.format === 'binary'
-            ? { binary: true }
-            : {}),
+          ...(binary ? { binary: true } : {}),
+          ...(binary && binaryArray ? { array: true } : {}),
           ...(name !== originalName ? { map: originalName } : {}),
         });
       }
-    } else if (operation.body.schema.$ref) {
-      const value = refToName(operation.body.schema.$ref);
+    } else if (bodySchema.$ref) {
+      const value = refToName(bodySchema.$ref);
       const originalName = toCase(value, 'snake_case');
       const name = conflicts.has(originalName) ? `${location}_${originalName}` : originalName;
       bodyRef = toCase(value, 'PascalCase');
@@ -147,7 +156,7 @@ export function getSignatureParameters({
         in: location,
         isRequired: operation.body.required ?? false,
         name,
-        schema: operation.body.schema,
+        schema: bodySchema,
       };
       if (name !== originalName) {
         signatureParameter.originalName = originalName;
@@ -163,7 +172,7 @@ export function getSignatureParameters({
         in: location,
         isRequired: operation.body.required ?? false,
         name: 'body',
-        schema: operation.body.schema,
+        schema: bodySchema,
       };
       fields.push({
         in: location,

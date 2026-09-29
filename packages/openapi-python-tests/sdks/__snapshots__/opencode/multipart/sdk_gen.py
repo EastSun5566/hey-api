@@ -9,3 +9,15 @@ class Sdk(Client):
     def upload_image(self, image: bytes, caption: Optional[str] = None):
         params = build_client_params([{"in": "multipart", "key": "image", "binary": True}, {"in": "multipart", "key": "caption"}], image=image, caption=caption)
         return self.request_options("post", "/images", params)
+
+    def upload_image_ref(self, image: bytes, caption: Optional[str] = None):
+        params = build_client_params([{"in": "multipart", "key": "image", "binary": True}, {"in": "multipart", "key": "caption"}], image=image, caption=caption)
+        return self.request_options("post", "/images/ref", params)
+
+    def upload_images(self, images: list[bytes], caption: Optional[str] = None):
+        params = build_client_params([{"in": "multipart", "key": "images", "array": True, "binary": True}, {"in": "multipart", "key": "caption"}], images=images, caption=caption)
+        return self.request_options("post", "/images/batch", params)
+
+    def send_binary_body(self, body: str):
+        params = build_client_params([{"in": "body", "key": "body", "map": "body"}], body=body)
+        return self.request_options("post", "/binary", params)

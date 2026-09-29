@@ -5,6 +5,15 @@ from typing import Optional
 from pydantic import BaseModel, RootModel
 
 
+class BinaryImage(RootModel[bytes]):
+    root: bytes
+
+
+class ImageUpload(BaseModel):
+    image: bytes
+    caption: Optional[str] = None
+
+
 class UploadImageBody(BaseModel):
     image: bytes
     caption: Optional[str] = None
@@ -12,5 +21,36 @@ class UploadImageBody(BaseModel):
 
 class UploadImageResponse(RootModel[None]):
     """Uploaded"""
+
+    root: None
+
+
+class UploadImageRefBody(RootModel[ImageUpload]):
+    root: ImageUpload
+
+
+class UploadImageRefResponse(RootModel[None]):
+    """Uploaded"""
+
+    root: None
+
+
+class UploadImagesBody(BaseModel):
+    images: list[BinaryImage]
+    caption: Optional[str] = None
+
+
+class UploadImagesResponse(RootModel[None]):
+    """Uploaded"""
+
+    root: None
+
+
+class SendBinaryBodyBody(RootModel[bytes]):
+    root: bytes
+
+
+class SendBinaryBodyResponse(RootModel[None]):
+    """Sent"""
 
     root: None

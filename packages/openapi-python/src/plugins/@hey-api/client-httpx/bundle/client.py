@@ -30,6 +30,7 @@ def build_client_params(fields: list[dict[str, Any]], /, **kwargs) -> dict[str, 
             key_map[key] = {
                 "in": field.get("in"),
                 "map": field.get("map", key),
+                "array": field.get("array", False),
                 "binary": field.get("binary", False),
             }
 
@@ -43,10 +44,11 @@ def build_client_params(fields: list[dict[str, Any]], /, **kwargs) -> dict[str, 
             in_slot = field["in"]
             map_key = field["map"]
             if in_slot == "multipart":
-                result.setdefault("files", {})[map_key] = (
-                    map_key if field["binary"] else None,
-                    value,
-                )
+                files = result.setdefault("files", [])
+                if field["array"]:
+                    files.extend((map_key, (map_key, item)) for item in value)
+                else:
+                    files.append((map_key, (map_key if field["binary"] else None, value)))
                 continue
             slot = {"body": "json", "query": "params"}.get(in_slot, in_slot)
 

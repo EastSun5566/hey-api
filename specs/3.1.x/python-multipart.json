@@ -4,6 +4,19 @@
     "title": "Python SDK multipart",
     "version": "1.0.0"
   },
+  "components": {
+    "schemas": {
+      "BinaryImage": { "type": "string", "format": "binary" },
+      "ImageUpload": {
+        "type": "object",
+        "required": ["image"],
+        "properties": {
+          "image": { "type": "string", "format": "binary" },
+          "caption": { "type": "string" }
+        }
+      }
+    }
+  },
   "paths": {
     "/images": {
       "post": {
@@ -33,6 +46,58 @@
             "description": "Uploaded"
           }
         }
+      }
+    },
+    "/images/ref": {
+      "post": {
+        "operationId": "upload_image_ref",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": { "$ref": "#/components/schemas/ImageUpload" }
+            }
+          }
+        },
+        "responses": { "204": { "description": "Uploaded" } }
+      }
+    },
+    "/images/batch": {
+      "post": {
+        "operationId": "upload_images",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["images"],
+                "properties": {
+                  "images": {
+                    "type": "array",
+                    "items": { "$ref": "#/components/schemas/BinaryImage" }
+                  },
+                  "caption": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "204": { "description": "Uploaded" } }
+      }
+    },
+    "/binary": {
+      "post": {
+        "operationId": "send_binary_body",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/octet-stream": {
+              "schema": { "type": "string", "format": "binary" }
+            }
+          }
+        },
+        "responses": { "204": { "description": "Sent" } }
       }
     }
   }
