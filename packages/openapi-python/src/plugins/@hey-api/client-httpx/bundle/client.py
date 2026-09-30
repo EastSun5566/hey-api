@@ -1,3 +1,4 @@
+import json
 from typing import Any, Optional
 from urllib.parse import quote
 
@@ -15,7 +16,7 @@ def build_client_params(fields: list[dict[str, Any]], /, **kwargs) -> dict[str, 
     """Build client parameters from flat keyword arguments.
 
     Args:
-        fields: List of field configurations with 'in', 'key', optional 'map' and 'binary'.
+        fields: List of field configurations with 'in', 'key', optional 'map', 'array' and 'binary'.
         **kwargs: Flat parameters passed to the SDK method.
 
     Returns:
@@ -45,10 +46,16 @@ def build_client_params(fields: list[dict[str, Any]], /, **kwargs) -> dict[str, 
             map_key = field["map"]
             if in_slot == "multipart":
                 files = result.setdefault("files", [])
-                if field["array"]:
-                    files.extend((map_key, (map_key, item)) for item in value)
-                else:
-                    files.append((map_key, (map_key if field["binary"] else None, value)))
+                if not field["binary"] and hasattr(value, "model_dump"):
+                    value = value.model_dump(mode="json", by_alias=True)
+                values = value if field["array"] else [value]
+                for item in values:
+                    if not field["binary"]:
+                        if hasattr(item, "model_dump"):
+                            item = item.model_dump(mode="json", by_alias=True)
+                        if not isinstance(item, str):
+                            item = json.dumps(item, ensure_ascii=False, separators=(",", ":"))
+                    files.append((map_key, (map_key if field["binary"] else None, item)))
                 continue
             slot = {"body": "json", "query": "params"}.get(in_slot, in_slot)
 
@@ -103,7 +110,7 @@ class BaseClient:
         options: Optional[dict[str, Any]] = None,
         **kwargs,
     ) -> httpx.Response:
-        """Make an HTTP request."""
+        """Make a request after substituting path parameters and serializing Pydantic JSON bodies."""
         request_options = dict(options or {})
         path = request_options.pop("path", {})
         for key, value in path.items():

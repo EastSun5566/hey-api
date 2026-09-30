@@ -59,6 +59,15 @@ export function getSignatureParameters({
       ? resolveSchema(operation.body.schema)
       : operation.body?.schema;
 
+  if (
+    operation.body?.type === 'form-data' &&
+    (bodySchema?.logicalOperator || bodySchema?.type !== 'object' || !bodySchema.properties)
+  ) {
+    throw new Error(
+      `Unsupported multipart body for ${operation.method.toUpperCase()} ${operation.path}: expected an object schema with properties.`,
+    );
+  }
+
   if (operation.body && bodySchema) {
     if (!bodySchema.logicalOperator && bodySchema.type === 'object' && bodySchema.properties) {
       const properties = bodySchema.properties;
@@ -143,7 +152,9 @@ export function getSignatureParameters({
           in: operation.body.type === 'form-data' ? 'multipart' : location,
           key: name,
           ...(binary ? { binary: true } : {}),
-          ...(binary && binaryArray ? { array: true } : {}),
+          ...(operation.body.type === 'form-data' && resolvedProperty.type === 'array'
+            ? { array: true }
+            : {}),
           ...(name !== originalName ? { map: originalName } : {}),
         });
       }

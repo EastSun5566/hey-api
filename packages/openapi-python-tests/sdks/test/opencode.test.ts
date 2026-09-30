@@ -69,7 +69,7 @@ describe(`Python SDK: ${namespace}`, () => {
     15_000,
   );
 
-  it('sends binary and text parts as multipart', async () => {
+  it('sends binary, scalar, object, and repeated parts as multipart', async () => {
     const config = createConfig({
       input: multipartSpecPath,
       output: 'multipart_runtime',
